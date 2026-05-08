@@ -73,9 +73,10 @@ google-analytics-cli accounts --credentials /path/to/your-key-file.json
 
 Credentials are resolved in this order:
 1. `--credentials <path>` flag
-2. `GOOGLE_APPLICATION_CREDENTIALS` env var
-3. `~/.config/google-analytics-cli/credentials.json` (auto-detected)
-4. gcloud Application Default Credentials
+2. `--profile <name>` flag (or `GA_PROFILE` env var) → `~/.config/google-analytics-cli/profiles/<name>.json`
+3. `GOOGLE_APPLICATION_CREDENTIALS` env var
+4. `~/.config/google-analytics-cli/credentials.json` (auto-detected)
+5. gcloud Application Default Credentials
 
 ### Step 4: Grant access in Google Analytics
 
@@ -99,6 +100,28 @@ gcloud auth application-default login \
 ```
 
 This uses your personal Google account's Analytics access. Good for local development, not recommended for automation.
+
+## Managing multiple GA accounts
+
+A single Service Account can already access multiple GA accounts if you grant it Viewer access in each one. You only need separate profiles when the Service Accounts themselves are different — e.g. different GCP projects, different clients, or permission boundaries you want to keep apart.
+
+Drop each Service Account key into the `profiles/` directory and switch between them with `--profile`:
+
+```bash
+mkdir -p ~/.config/google-analytics-cli/profiles
+cp ~/Downloads/account-a-key.json ~/.config/google-analytics-cli/profiles/account-a.json
+cp ~/Downloads/account-b-key.json ~/.config/google-analytics-cli/profiles/account-b.json
+
+# Use a profile per command
+google-analytics-cli accounts --profile account-a
+
+# Or set it for the shell session
+export GA_PROFILE=account-b
+google-analytics-cli accounts
+
+# List configured profiles
+google-analytics-cli profiles
+```
 
 ## Usage
 

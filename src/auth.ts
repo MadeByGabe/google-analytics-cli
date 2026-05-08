@@ -10,17 +10,79 @@ const { version } = require("../package.json") as { version: string };
 
 export { version };
 
-const DEFAULT_CREDENTIALS_PATH = path.join(
+const CONFIG_DIR = path.join(
   os.homedir(),
   ".config",
   "google-analytics-cli",
-  "credentials.json",
 );
 
+const DEFAULT_CREDENTIALS_PATH = path.join(CONFIG_DIR, "credentials.json");
+const PROFILES_DIR = path.join(CONFIG_DIR, "profiles");
+
 let credentialsPath: string | undefined;
+let profileName: string | undefined;
 
 export function setCredentialsPath(p: string): void {
   credentialsPath = p;
+}
+
+const PROFILE_NAME_PATTERN = /^[A-Za-z0-9._-]+$/;
+
+export function setProfile(name: string): void {
+  profileName = name;
+}
+
+function validateProfileName(name: string): void {
+  if (!PROFILE_NAME_PATTERN.test(name) || name === "." || name === "..") {
+    throw new Error(
+      `Invalid profile name "${name}". Profile names may only contain letters, digits, dots, underscores, and dashes.`,
+    );
+  }
+}
+
+export function getProfilePath(name: string): string {
+  return path.join(PROFILES_DIR, `${name}.json`);
+}
+
+export function listProfiles(): { name: string; path: string }[] {
+  if (!fs.existsSync(PROFILES_DIR)) return [];
+  return fs
+    .readdirSync(PROFILES_DIR)
+    .filter((f) => f.endsWith(".json"))
+    .map((f) => ({
+      name: f.slice(0, -".json".length),
+      path: path.join(PROFILES_DIR, f),
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+export function getProfilesDir(): string {
+  return PROFILES_DIR;
+}
+
+export function getDefaultCredentialsPath(): string {
+  return DEFAULT_CREDENTIALS_PATH;
+}
+
+function resolveKeyFilename(): string | undefined {
+  if (credentialsPath) return credentialsPath;
+  if (profileName) {
+    validateProfileName(profileName);
+    const p = getProfilePath(profileName);
+    if (!fs.existsSync(p)) {
+      throw new Error(
+        `Profile "${profileName}" not found at ${p}. Run \`google-analytics-cli profiles\` to list available profiles.`,
+      );
+    }
+    return p;
+  }
+  if (
+    !process.env.GOOGLE_APPLICATION_CREDENTIALS &&
+    fs.existsSync(DEFAULT_CREDENTIALS_PATH)
+  ) {
+    return DEFAULT_CREDENTIALS_PATH;
+  }
+  return undefined;
 }
 
 function getClientOptions() {
@@ -28,16 +90,8 @@ function getClientOptions() {
     libName: "google-analytics-cli",
     libVersion: version,
   };
-  if (credentialsPath) {
-    return { ...base, keyFilename: credentialsPath };
-  }
-  if (
-    !process.env.GOOGLE_APPLICATION_CREDENTIALS &&
-    fs.existsSync(DEFAULT_CREDENTIALS_PATH)
-  ) {
-    return { ...base, keyFilename: DEFAULT_CREDENTIALS_PATH };
-  }
-  return base;
+  const keyFilename = resolveKeyFilename();
+  return keyFilename ? { ...base, keyFilename } : base;
 }
 
 export function createAdminClient(): InstanceType<

@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 
 import { Command, CommanderError } from "commander";
-import { setCredentialsPath, version } from "./auth.js";
+import { setCredentialsPath, setProfile, version } from "./auth.js";
 import { registerAdminCommands } from "./commands/admin.js";
+import { registerProfilesCommands } from "./commands/profiles.js";
 import { registerReportingCommands } from "./commands/reporting.js";
 
 async function main() {
@@ -32,6 +33,11 @@ async function main() {
     .option(
       "--credentials <path>",
       "Path to service account JSON key file",
+    )
+    .option(
+      "--profile <name>",
+      "Named credentials profile under ~/.config/google-analytics-cli/profiles/ (or set GA_PROFILE)",
+      process.env.GA_PROFILE,
     );
 
   program.exitOverride();
@@ -42,12 +48,19 @@ async function main() {
   });
 
   program.hook("preAction", (thisCommand) => {
-    const { credentials } = thisCommand.optsWithGlobals();
+    const { credentials, profile } = thisCommand.optsWithGlobals();
+    if (credentials && profile) {
+      throw new Error(
+        "--credentials and --profile cannot be used together. Use one or the other.",
+      );
+    }
     if (credentials) setCredentialsPath(credentials);
+    if (profile) setProfile(profile);
   });
 
   registerAdminCommands(program);
   registerReportingCommands(program);
+  registerProfilesCommands(program);
 
   // No args: show help and exit cleanly
   if (process.argv.length <= 2) {

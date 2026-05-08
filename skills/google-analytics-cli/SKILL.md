@@ -33,11 +33,14 @@ npm install -g google-analytics-cli
 The CLI uses Google service account credentials. Credentials are resolved in this order:
 
 1. `--credentials <path>` flag (per-command)
-2. `GOOGLE_APPLICATION_CREDENTIALS` env var
-3. `~/.config/google-analytics-cli/credentials.json` (auto-detected)
-4. gcloud Application Default Credentials
+2. `--profile <name>` flag or `GA_PROFILE` env var → `~/.config/google-analytics-cli/profiles/<name>.json`
+3. `GOOGLE_APPLICATION_CREDENTIALS` env var
+4. `~/.config/google-analytics-cli/credentials.json` (auto-detected)
+5. gcloud Application Default Credentials
 
 Before running any command, verify credentials by running `google-analytics-cli accounts`. If it fails, ask the user to set up a service account and grant it Viewer access in Google Analytics.
+
+If the user manages multiple GA accounts (e.g. several clients or organizations), run `google-analytics-cli profiles` to list available profiles, then pass `--profile <name>` (e.g. `accounts --profile account-a`) to target a specific one. `--credentials` and `--profile` cannot be used together.
 
 ## Property ID
 
@@ -89,6 +92,9 @@ google-analytics-cli annotations 123456789
 
 # Get custom dimensions and metrics for a property (Data API, filters by customDefinition)
 google-analytics-cli custom-dims 123456789
+
+# List configured credentials profiles (for users with multiple GA accounts)
+google-analytics-cli profiles
 ```
 
 ### Change history
